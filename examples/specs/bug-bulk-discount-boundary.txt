@@ -1,0 +1,21 @@
+Bug: an order of exactly $100.00 does not get the 10% bulk discount
+
+Where: cart.py (Cart.discount)
+
+What we promise customers:
+  "Spend $100 or more and get 10% off your order."
+
+Steps to reproduce:
+  1. Create an empty Cart.
+  2. Add one item: sku "A1", name "Desk Lamp", unit_price 50.00, qty 2.
+  3. Call cart.total().
+
+Expected: 90.00   (subtotal 100.00, minus 10% = 90.00)
+Actual:   100.00  (no discount applied)
+
+Orders above $100 (e.g. 100.01) get the discount correctly. Orders below
+$100 correctly get no discount. It's only the exact-threshold case that's
+wrong, which looks like a > vs >= comparison.
+
+Impact: customers who build a cart to exactly $100 to hit the promo are
+charged full price. Support has had several complaints.

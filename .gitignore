@@ -1,0 +1,8 @@
+jira-loop.env
+.claude/jira-loop.env
+.jira-loop/
+.dev-loop/
+qa/
+__pycache__/
+*.pyc
+.DS_Store

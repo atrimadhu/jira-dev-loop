@@ -1,0 +1,8 @@
+ID,Category,Ref,Title,Preconditions,Steps,Expected Result,Priority,Result
+TC-01,Functional,,Original repro: exactly $100.00 gets bulk discount,Empty Cart,"add(""A1"",""Desk Lamp"",50.00,qty=2); total()",total() == 90.0,P0,PASS
+TC-02,Regression,,Just under threshold gets no discount,Empty Cart,"add(""A1"",""Lamp"",99.99); total()",total() == 99.99,P0,PASS
+TC-03,Regression,,Above threshold still discounted,Empty Cart,"add(""B2"",""Kettle"",150.00); total()",total() == 135.0,P0,PASS
+TC-04,Regression,,Empty cart totals zero,Empty Cart,total(),total() == 0.0,P1,PASS
+TC-05,Edge Case,,Threshold reached across multiple lines,Empty Cart,"add(""A1"",""Mug"",40.00); add(""C3"",""Tray"",60.00); total()",total() == 90.0,P1,PASS
+TC-06,Edge Case,,Threshold reached by merging qty on same SKU,Empty Cart,"add(""A1"",""Lamp"",50.00); add(""A1"",""Lamp"",50.00); total()",total() == 90.0,P1,PASS
+TC-07,Regression,,Existing unit test suite still green,Repo checked out,python3 -m unittest -v,All tests pass; 0 failures,P0,PASS
