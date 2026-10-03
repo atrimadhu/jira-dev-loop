@@ -67,7 +67,7 @@ unfinished work as done.
 
 ```bash
 # 1. Get it
-git clone https://github.com/<your-username>/jira-dev-loop.git
+git clone https://github.com/atrimadhu/jira-dev-loop.git
 
 # 2. Install into any project (only adds jira-* files, never overwrites yours)
 ./jira-dev-loop/install.sh /path/to/your-project

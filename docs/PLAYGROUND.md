@@ -25,7 +25,7 @@ except the Claude Code session itself.
 Work on a copy so the original stays clean for the next experiment:
 
 ```bash
-git clone https://github.com/<your-username>/jira-dev-loop.git
+git clone https://github.com/atrimadhu/jira-dev-loop.git
 cd jira-dev-loop
 
 cp -r examples/playground-app ~/jira-loop-sandbox
