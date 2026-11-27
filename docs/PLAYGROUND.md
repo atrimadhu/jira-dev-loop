@@ -78,7 +78,7 @@ Paste into Claude Code:
    ```bash
    watch -n 2 'ls -1 .dev-loop/*/ qa/ 2>/dev/null'
    ```
-3. At the end you get a chat summary with status, coverage %, QA pass rate, and whether any loop hit its 3-round cap.
+3. At the end you get a chat summary with status, coverage %, QA pass rate, and whether any loop hit its 2-round cap.
 
 **Check the result yourself:**
 
@@ -192,7 +192,7 @@ before going further; the pipeline stops in Phase 0 if this fails.
 ```
 
 **What shows up on the ticket, in order:**
-1. A comment with the **finalized plan**, after planner and planner-review agree (at most 3 rounds)
+1. A comment with the **finalized plan**, after planner and planner-review agree (at most 2 rounds)
 2. An **attachment**: `PLAY-1-test-cases.csv`, the QA sheet
 3. A **final comment**: summary, coverage, QA results, deviations, and a `Ready for PR` / `Needs manual follow-up` status
 
@@ -239,4 +239,4 @@ To see what a finished run looks like without spending tokens, open
 - **Cost:** a run makes at least 8 agent calls, more when loops retry. Keep specs small while you learn how it behaves.
 - **Interrupting is safe.** Whatever was already written to disk (and posted to Jira) stays. The trail folder shows how far it got.
 - **Reruns start fresh.** Running the same input again doesn't resume. It produces a new plan and a new trail folder, which is handy for comparing runs.
-- **The 3-round cap never fails silently.** If a loop gives up, the final report says so and the status is `Needs manual follow-up`.
+- **The 2-round cap never fails silently.** If a loop gives up, the final report says so and the status is `Needs manual follow-up`.

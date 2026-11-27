@@ -40,7 +40,7 @@ check each other:**
 - ✅ A **QA agent** writes a test sheet from the requirement, another executes it, and each failure is routed to the right fix: a code bug goes back to the executor, a plan gap goes back to the planner.
 - 📋 A **final reviewer** writes the closing report, including anything that didn't go well.
 
-Every loop is **capped at 3 rounds**. When a cap is hit, the run continues,
+Every loop is **capped at 2 rounds**. When a cap is hit, the run continues,
 and the final report states what is still unresolved. It won't mark
 unfinished work as done.
 
@@ -52,7 +52,8 @@ unfinished work as done.
 |---|---|
 | 🎫 **Three ways in** | A Jira ticket key, an inline `--text` description, or a `--file` spec (`.md` / `.txt`). Jira is optional. |
 | 🧭 **Ticket-type aware** | Bugs get root-cause analysis and regression tests. Stories get acceptance-criteria tracing. Tasks get a verifiable definition of done. The type is detected automatically. |
-| ⚔️ **Adversarial loops** | planner ⇄ plan-reviewer, executor ⇄ reviewer, QA ⇄ executor/planner. Each capped at 3 rounds. |
+| ⚔️ **Adversarial loops** | planner ⇄ plan-reviewer, executor ⇄ reviewer, QA ⇄ executor/planner. Each capped at 2 rounds. |
+| ⚡ **`--lite` for small tickets** | Add `--lite` to any command for a ~5-call run: one planning pass, the executor writes its own tests, one review round, one QA pass. The final report says what was skipped. |
 | 📊 **Traceable QA** | A CSV test sheet in which every acceptance criterion or DoD item maps to a case via a `Ref` column. It's attached to the ticket automatically. |
 | 🧾 **Audit trail** | Every agent's output is saved to `.jira-loop/<KEY>/` or `.dev-loop/LOCAL-<ts>/`. You can see who decided what, and why. |
 | 🛡️ **Guardrails** | Refuses Epics. Pulls in the parent of a sub-task. Stops on a missing spec file instead of guessing. Never overwrites your files on install. |
@@ -97,7 +98,12 @@ That's the whole setup for local mode. For Jira mode, see [Connecting Jira](#-co
 ```text
 /jira-loop --text "Users on the free plan can export unlimited CSVs; cap it at 5/day and show a paywall after that."
 /jira-loop --text "the search endpoint 500s when the query string is empty" --type bug
+/jira-loop --text "rename the misspelled 'recieve' helper to 'receive'" --type task --lite
 ```
+
+Add `--lite` to any mode for small, low-risk changes: it skips plan review
+and the separate coverage agent and runs each loop once, so it's much faster
+and cheaper.
 
 With no `--type`, the planner decides **BUG / STORY / TASK** itself and
 explains its choice on the first line of the plan.
@@ -145,14 +151,15 @@ flowchart TD
     IN(["Jira ticket · text · file"]) --> P0{"Phase 0<br/>detect mode + lane"}
     P0 -->|Epic| STOP(["⛔ refuse: split it first"])
     P0 --> PL["🧠 planner"]
-    PL <-->|max 3 rounds| PR["⚔️ planner-review"]
+    PL <-->|max 2 rounds| PR["⚔️ planner-review"]
     PR -->|APPROVE| POST1[/"📝 post plan to Jira"/]
     POST1 --> EX["🛠️ executor"]
+    POST1 --> QC["📋 qa-testcases<br/>CSV, attached to Jira<br/>(runs in parallel)"]
     EX --> COV["🧪 code-coverage<br/>target 90%+"]
     COV --> RV["🔍 reviewer"]
-    RV <-->|max 3 rounds| EX
-    RV -->|APPROVE| QC["📋 qa-testcases<br/>CSV, attached to Jira"]
-    QC --> QT["✅ qa-testing"]
+    RV <-->|max 2 rounds| EX
+    RV -->|APPROVE| QT["✅ qa-testing"]
+    QC --> QT
     QT -->|bug| EX
     QT -->|plan gap| PL
     QT -->|all pass or cap hit| FR["📑 final-review"]
@@ -311,7 +318,15 @@ nothing anywhere. Jira mode adds the round trip to a ticket.
 <summary><b>How long does a run take, and what does it cost?</b></summary>
 
 A run makes at least 8 agent calls, and more when review or QA loops retry,
-so it takes longer and uses more tokens than a single prompt. Start with small,
+so it takes longer and uses more tokens than a single prompt. To keep cost down,
+each agent is pinned to the cheapest model and reasoning effort that suits its
+role (Opus for planning and implementing, Sonnet for the orchestrator,
+reviewing and testing, Haiku for the QA sheet and final report — change
+`model:` / `effort:` in `.claude/agents/*.md` to tune this). Agents exchange
+file paths and short verdicts instead of pasting full reports, start from the
+planner's file map (`context.md`) instead of re-searching the repo, and the QA
+sheet is written in parallel with the code. For small tickets, `--lite` cuts a
+run to about 5 agent calls. Start with small,
 well-scoped tickets. The [playground](docs/PLAYGROUND.md) specs are sized for
 learning.
 </details>
@@ -333,7 +348,7 @@ shows how far it got. Rerunning starts a fresh pass rather than resuming.
 </details>
 
 <details>
-<summary><b>What happens when a loop hits its 3-round cap?</b></summary>
+<summary><b>What happens when a loop hits its 2-round cap?</b></summary>
 
 The run continues without stopping to ask. The unresolved points go into the
 final report, and the status becomes **Needs manual follow-up**. The cap is

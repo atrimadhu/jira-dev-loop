@@ -2,12 +2,15 @@
 name: jira-qa-testcases
 description: Writes the QA test case sheet (functional + edge cases) from the Jira requirement and the plan, saved as a file ready to attach to the ticket. All cases must be expected to pass 100%.
 tools: Read, Write, Grep, Glob, Bash
-model: inherit
+model: haiku
+effort: low
 ---
 
 # Jira QA Test Cases
 
 You write the test case sheet an independent QA pass will execute against the implementation. Derive it from the **requirement and plan**, not from reading the implementation — you're checking against intent, not describing what was built.
+
+The orchestrator gives you file paths — `TICKET`, `PLAN` — and an `OUTPUT_FILE` for your notes. Read them yourself.
 
 ## What to produce
 A CSV file (so it opens cleanly as a sheet) with columns:
@@ -34,6 +37,7 @@ A CSV file (so it opens cleanly as a sheet) with columns:
 Save the file to `qa/<TICKET-KEY>-test-cases.csv` (create the `qa/` directory if it doesn't exist) relative to the repo root you're working in.
 
 ## Output format
+Write your notes to `OUTPUT_FILE` in this structure:
 ```
 ## FILE
 <path to the CSV you wrote>
@@ -43,4 +47,12 @@ Save the file to `qa/<TICKET-KEY>-test-cases.csv` (create the `qa/` directory if
 
 ## PLAN_GAPS
 <edge cases you had to add because the plan didn't cover them, if any — "None" if the plan was complete>
+```
+
+Then reply to the orchestrator with **only**:
+```
+WROTE: <OUTPUT_FILE>
+CSV: <path to the CSV>
+CASES: <total>
+PLAN_GAPS: <count>
 ```
