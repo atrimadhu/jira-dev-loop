@@ -2,11 +2,12 @@
 
 # 🔁 jira-loop
 
-### Turn a Jira ticket, a sentence, or a spec file into planned, tested, reviewed, and QA'd code, using one Claude Code command.
+### Turn a Jira ticket, a sentence, or a spec file into planned, tested, reviewed, and QA'd code, using one command in Claude Code, Cursor, Copilot or any agent that supports Agent Skills.
 
 **8 specialist AI agents · adversarial review loops · 90%+ coverage target · honest final reports**
 
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-slash%20command-D97757?style=flat-square)
+![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-6E56CF?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen?style=flat-square)
 ![Jira](https://img.shields.io/badge/Jira-Cloud%20%7C%20Server%20%7C%20optional-0052CC?style=flat-square&logo=jira&logoColor=white)
@@ -82,6 +83,36 @@ cd /path/to/your-project && claude
 ```
 
 That's the whole setup for local mode. For Jira mode, see [Connecting Jira](#-connecting-jira).
+
+### Or install it as an Agent Skill (Cursor, Copilot, Claude Code and 40+ others)
+
+The same pipeline is packaged as a portable skill in
+[`skills/jira-loop/`](skills/jira-loop/) — a `SKILL.md` plus the role
+instructions and the Jira client. Install it with the
+[skills CLI](https://github.com/vercel-labs/skills), which detects the agents
+you have and asks where to put it:
+
+```bash
+npx skills add atrimadhu/jira-dev-loop
+```
+
+Or copy the folder yourself:
+
+| Agent | Project install | Personal install |
+|---|---|---|
+| Claude Code | `.claude/skills/jira-loop/` | `~/.claude/skills/jira-loop/` |
+| Cursor | `.cursor/skills/jira-loop/` | `~/.cursor/skills/jira-loop/` |
+| GitHub Copilot | `.github/skills/jira-loop/` | `~/.copilot/skills/jira-loop/` |
+
+Then ask in plain words, for example *"run jira-loop on PROJ-123"* or
+*"use jira-loop --lite to add a /health endpoint"*.
+
+**Skill vs. `install.sh`:** the skill runs anywhere. It uses subagents when
+the agent has them and otherwise plays each role itself in sequence (the final
+report says so, since that review is less independent). In Claude Code,
+`install.sh` is still the best option: it adds the `/jira-loop` command and
+the 8 agents with tuned per-role models. Use one or the other in Claude Code,
+not both, since the command and the skill are both named `jira-loop`.
 
 > [!TIP]
 > **New here? Try the [15-minute Playground](docs/PLAYGROUND.md) first.** It
@@ -290,6 +321,13 @@ Install it once per project; there's no global install.
     jira_client.py   stdlib-only Jira REST client (Cloud ADF + Server plain text)
   jira-loop.env.example
   .gitignore         keeps jira-loop.env out of git
+skills/jira-loop/    the same pipeline as a portable Agent Skill
+  SKILL.md           orchestrator instructions (hand-written)
+  references/roles/  the 8 role prompts (generated from .claude/agents/)
+  scripts/           jira_client.py (generated copy)
+  assets/            jira-loop.env.example (generated copy)
+tools/
+  sync-skill.py      regenerates the skill's copies from .claude/
 install.sh           safe, idempotent installer
 docs/
   PLAYGROUND.md      15-minute hands-on guide to all three modes
@@ -361,6 +399,11 @@ never hidden.
 Yes. Each agent is a Markdown file in `.claude/agents/`, so edit the prompt to
 match your team's standards (coverage target, review checklist, QA format).
 Each file has separate BUG / STORY / TASK sections.
+
+The portable skill bundles copies of these prompts. After editing
+`.claude/agents/`, run `python3 tools/sync-skill.py` to refresh
+`skills/jira-loop/references/roles/`. Pipeline changes go in both
+`.claude/commands/jira-loop.md` and `skills/jira-loop/SKILL.md`.
 </details>
 
 ---

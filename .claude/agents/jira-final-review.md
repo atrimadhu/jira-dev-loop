@@ -24,13 +24,13 @@ A comment that lets someone who wasn't watching understand exactly what happened
 <plain description of the change, tied to files>
 
 ## Plan
-<one-line summary of the approach + link/reference to the plan comment already on the ticket>
+<one-line summary of the approach + reference to the plan: the plan comment already on the ticket, or `plan-final.md` in the run folder for a local no-ticket run>
 <lane BUG only: also state the root cause in one sentence, and the blast radius that was assessed for regression risk>
 <lane STORY only: list each Acceptance Criterion and whether it was met>
 <lane TASK only: list each Definition of Done item and whether it was met>
 
 ## Coverage
-<% achieved on changed code>
+<% achieved on changed code, as measured — or "not measured" if no coverage tool ran; never present an estimate as a measurement>
 
 ## QA Results
 <pass/fail counts, and if any P0 cases failed and were later fixed, say so — don't bury it>
