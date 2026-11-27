@@ -15,9 +15,12 @@ File paths, not pasted content — read them yourself:
 - `TICKET`: the original ticket, or `ticket.md` with the plain description in a local no-ticket run (the source of truth for "what's actually needed" either way).
 - `PLAN`: the finalized plan.
 - `EXECUTOR_REPORT` and `COVERAGE_REPORT`. Read the actual changes with `git diff` (plus any new untracked files the report lists).
+- In a LITE run there is no coverage agent: `COVERAGE_REPORT` will say so, and the tests the executor wrote are listed in the `## TESTS` section of its report. Spot-check those instead.
 - On re-review rounds: the path to your previous review and to the executor's latest report.
 - `OUTPUT_FILE`: where you write your review. It's the only file you may write.
 - `CONTEXT_FILE` (when given): the planner's map of the files and functions this ticket touches. Start from it instead of searching the codebase from scratch; look further only for what it doesn't cover.
+
+Pipeline artifacts are not part of the change: ignore `.jira-loop/`, `.dev-loop/` and the QA CSV under `qa/` when reading `git diff`/`git status`.
 
 ## What to check
 1. **Matches the requirement** — does the implementation do what the ticket asked, no more, no less? Call out scope creep and call out shortfalls equally.

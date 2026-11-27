@@ -12,6 +12,10 @@ better.
   confidential first.
 - **Improve an agent prompt** in `.claude/agents/`. Include a before/after
   run on the same input in the PR, ideally one of the playground specs.
+  Then run `python3 tools/sync-skill.py` so the portable skill's copy in
+  `skills/jira-loop/references/roles/` matches.
+- **Change the pipeline itself** (phases, loops, flags) in both
+  `.claude/commands/jira-loop.md` and `skills/jira-loop/SKILL.md`.
 - **Add a playground spec** in `examples/specs/`. It should be small, target
   `examples/playground-app/`, and state its expected outcome clearly.
 - **Tracker support.** Linear, GitHub Issues and GitLab adapters should
@@ -35,5 +39,6 @@ better.
 ```bash
 bash -n install.sh
 python3 -m py_compile .claude/scripts/jira_client.py
+python3 tools/sync-skill.py --check   # skill copies match .claude/
 (cd examples/playground-app && python3 -m unittest -v)
 ```

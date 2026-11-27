@@ -16,7 +16,7 @@ This pipeline makes 8–20 agent calls (about 4 with `--lite`), so what you pass
 - **Agents write their full output to `OUTPUT_FILE` and reply with a few lines** (`VERDICT:`/`RESULT:`, `WROTE:`, counts). Route on those lines. Don't `Read` an agent's output file yourself unless a routing decision can't be made from the short reply.
 - **Don't save agent output yourself** — the agent already wrote it. If an agent replies with its whole report instead of the short form, or didn't write the file, save the reply to the expected path once and carry on.
 - **Run independent agents in parallel**: when two calls don't depend on each other's output, send both `Agent` calls in the same message. Phase 2 does this for the executor and the QA test-case writer.
-- **Point every agent after the planner at `CONTEXT_FILE: <WORKDIR>/context.md`** (the planner's map of relevant files and functions) so it starts there instead of searching the codebase from scratch.
+- **Point the agents that read code at `CONTEXT_FILE: <WORKDIR>/context.md`** (the planner's map of relevant files and functions) so they start there instead of searching the codebase from scratch. Leave it out for `jira-qa-testcases` (it works from the requirement, not the code) and `jira-final-review`.
 - Keep the ticket out of your own context where you can: redirect Jira JSON straight to a file and pull only the fields you need.
 
 The Jira REST client is `.claude/scripts/jira_client.py` (stdlib-only Python, run via `python3`). All Jira reads/writes go through it — no subagent talks to Jira directly; you (the orchestrator) do it centrally so credentials and comment formatting stay in one place.
@@ -36,7 +36,7 @@ The Jira REST client is `.claude/scripts/jira_client.py` (stdlib-only Python, ru
 2. **JIRA MODE only:**
    a. Run `python3 .claude/scripts/jira_client.py env-check`. If it fails, stop and tell the user exactly what's missing. This is a hard stop — the pipeline cannot reach Jira without it.
    b. `mkdir -p .jira-loop/<KEY>` and run `python3 .claude/scripts/jira_client.py get <KEY> > .jira-loop/<KEY>/ticket.json`. This file is the source of truth every agent reads. Don't print it — extract only what you need for routing: `python3 -c "import json;d=json.load(open('.jira-loop/<KEY>/ticket.json'));print(d['issuetype'], d.get('parent') or '')"` (if the `get` fails, show its error and stop).
-   c. Classify `issuetype` into a lane, and say it explicitly in every subagent call from here on (e.g. "Ticket lane: STORY — issuetype: Story"):
+   c. Classify `issuetype` into a lane. Give the lane in every subagent call in every mode as `lane: BUG|STORY|TASK` (Jira mode may add the issuetype, e.g. `lane: STORY (issuetype: Story)`):
       - **BUG** — `Bug`, `Defect`, `Incident`, or similar.
       - **STORY** — `Story`, `Improvement`, `Enhancement`, or similar user-facing work.
       - **TASK** — `Task`, `Sub-task`, `Chore`, `Technical Task`, or similar non-user-facing technical work.
@@ -55,7 +55,10 @@ The Jira REST client is `.claude/scripts/jira_client.py` (stdlib-only Python, ru
 
 ## LITE MODE (`--lite`) — overrides for small, low-risk tickets
 Same phases, same files, same honesty rules, but with the expensive loops cut. Apply these overrides wherever the phase below says otherwise:
-- **Phase 1:** call `jira-planner` once. No `jira-planner-review`; `plan-round-1.md` is the final plan.
+- **Phase 1:** call `jira-planner` once, telling it "LITE MODE". No `jira-planner-review`; `plan-round-1.md` is the final plan.
+- **Round numbers:** tell every role `round 1 of max 1 (LITE MODE)`.
+- **Coverage:** pass the reviewer `COVERAGE_REPORT: none (LITE MODE) — the executor's tests are in the ## TESTS section of its report`. If the executor's reply says `COVERAGE: not measured`, report it that way; never an estimate.
+
 - **Phase 2:** tell `jira-executor` "LITE MODE: also write the unit tests for your change" — it covers what `jira-code-coverage` normally does. Still run `jira-qa-testcases` in parallel with it.
 - **Phase 3:** skip — no `jira-code-coverage` call. Use the coverage figure from the executor's reply.
 - **Phase 4:** one `jira-reviewer` round. If `REQUEST_CHANGES`, one executor fix pass, with no re-review; record that the fix wasn't re-reviewed.
@@ -76,7 +79,7 @@ Typical cost: ~5 agent calls (planner, executor + QA test cases in parallel, rev
 ## Phase 2 — Implementation + QA test cases (in parallel)
 The QA test cases come from the ticket and plan, not the code, so write them while the code is being built. Send both calls **in the same message**:
 1. `jira-executor` with `TICKET`, `PLAN: <WORKDIR>/plan-final.md`, `CONTEXT_FILE`, `OUTPUT_FILE: <WORKDIR>/executor-1.md`.
-2. `jira-qa-testcases` with `TICKET`, `PLAN`, `OUTPUT_FILE: <WORKDIR>/qa-testcases.md`. It writes a CSV under `qa/` and replies with its path.
+2. `jira-qa-testcases` with `TICKET`, `PLAN`, `KEY`, `OUTPUT_FILE: <WORKDIR>/qa-testcases.md`. It writes a CSV under `qa/` and replies with its path.
 Wait for both before going on. Then attach the sheet — **JIRA MODE**: `python3 .claude/scripts/jira_client.py attach <KEY> <path-to-csv>`. **LOCAL MODE**: nothing to attach to; the CSV under `qa/` is the deliverable.
 
 ## Phase 3 — Coverage
@@ -92,7 +95,7 @@ Wait for both before going on. Then attach the sheet — **JIRA MODE**: `python3
 QA test cases are now written in parallel with the executor in Phase 2. Phase numbers are kept so older run folders and docs still line up.
 
 ## Phase 6 — QA testing loop (max 2 rounds total, routes to executor or planner)
-1. Round 1: call `jira-qa-testing` with `CSV`, `TICKET`, `PLAN`, `CONTEXT_FILE`, `OUTPUT_FILE: <WORKDIR>/qa-round-1.md`.
+1. Round 1: call `jira-qa-testing` with `CSV`, `TICKET`, `PLAN`, `CONTEXT_FILE`, the round number, `OUTPUT_FILE: <WORKDIR>/qa-round-1.md`.
 2. If `RESULT: ALL_PASS`, go to Phase 7.
 3. If `FAILURES_FOUND` and total QA rounds so far < 2:
    - Route from the `FAILURES:` line of the reply. If there are both `bug` and `plan-gap` failures, start the executor bug fix and the planner amendment in parallel (same message) — they touch different things. For the failures typed `bug`: call `jira-executor` once with a fix request naming those case IDs and pointing at `<WORKDIR>/qa-round-N.md` for the repro details, then re-run `jira-code-coverage` on the fix (if `LOGIC_CHANGED: yes`), then re-run `jira-reviewer` on it (still within reason — don't restart the whole Phase 4 loop counter, just get one sanity pass).
@@ -107,7 +110,7 @@ QA test cases are now written in parallel with the executor in Phase 2. Phase nu
    **LOCAL MODE**: nothing to post to; the file is the deliverable.
 
 ## Phase 8 — Report to the user
-Print a short summary in chat, built from the agents' short replies (final review's `STATUS`/`COVERAGE`/`QA`/`CAPS_HIT`): mode (Jira ticket + link, or local run id), final status (Ready for PR / Needs manual follow-up), coverage %, QA pass rate, and call out explicitly if any loop hit its 2-round cap (and in LITE MODE, that it was a lite run). Point to `<WORKDIR>` for the full trail. In LOCAL MODE, also point at `<WORKDIR>/final-comment.md` and the QA CSV as the two files worth reading first, and mention that if a real Jira ticket gets created for this work later, `plan-final.md` and `final-comment.md` can be posted to it directly: `python3 .claude/scripts/jira_client.py comment <REAL-KEY> --file <WORKDIR>/plan-final.md`.
+Print a short summary in chat, built from the agents' short replies (final review's `STATUS`/`COVERAGE`/`QA`/`CAPS_HIT`): mode (Jira ticket + link, or local run id), final status (Ready for PR / Needs manual follow-up), coverage %, QA pass rate, and call out explicitly if any loop hit its 2-round cap (and in LITE MODE, that it was a lite run). If the repo's `.gitignore` doesn't already ignore `.jira-loop/`, `.dev-loop/` and `qa/`, mention that they're new untracked folders the user can ignore or keep. Point to `<WORKDIR>` for the full trail. In LOCAL MODE, also point at `<WORKDIR>/final-comment.md` and the QA CSV as the two files worth reading first, and mention that if a real Jira ticket gets created for this work later, `plan-final.md` and `final-comment.md` can be posted to it directly: `python3 .claude/scripts/jira_client.py comment <REAL-KEY> --file <WORKDIR>/plan-final.md`.
 
 ## Ground rules throughout
 - Output file numbering keeps counting across phases: the executor's QA fix after `executor-2.md` writes `executor-3.md`, and so on for `coverage-N.md` and `reviewer-round-N.md`. Never overwrite an earlier round's file — the trail is the audit record.
